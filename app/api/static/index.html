@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meteo ML Forecast</title>
+  <script src="https://cdn.plot.ly/plotly-2.33.0.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      font-size: 18px;
+      color: #1f3d2f;
+      background: #f5f8f3;
+    }
+
+    h1 {
+      font-size: 2.1rem;
+      margin-bottom: 18px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(180px, 1fr));
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 24px;
+    }
+
+    label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select,
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 10px;
+      border: 1px solid #b8ceb6;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 1rem;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 14px 18px;
+      border: none;
+      border-radius: 12px;
+      background: #d8f0c7;
+      color: #1f472d;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+      min-width: 140px;
+    }
+
+    button:hover {
+      background: #c3e6a5;
+      transform: translateY(-1px);
+    }
+
+    #chart {
+      height: 520px;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(31, 77, 47, 0.08);
+    }
+
+    #metrics {
+      margin-top: 20px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(31, 77, 47, 0.06);
+    }
+  </style>
+</head>
+<body>
+  <h1>Учебный сервис прогноза погоды</h1>
+  <div class="controls">
+    <div>
+      <label>Город</label><br />
+      <select id="city"></select>
+    </div>
+    <div>
+      <label>Тип модели</label><br />
+      <select id="model"></select>
+    </div>
+    <div>
+      <label>Горизонт прогноза (дней)</label><br />
+      <input id="horizon" type="number" min="1" max="7" value="3" />
+    </div>
+    <div class="button-group">
+      <button id="predict">Спрогнозировать</button>
+      <button id="refresh">Обновить данные</button>
+    </div>
+  </div>
+  <div id="chart" style="height: 520px;"></div>
+  <div id="metrics"></div>
+  <div id="explanation"></div>
+
+  <script>
+    const modelLabels = {
+      tabular: 'Табличная модель (лаговые признаки + деревья)',
+      stats: 'Статистическая модель (скользящее сглаживание)',
+      sequence: 'Последовательная модель (LSTM, если доступно)'
+    };
+
+    async function loadOptions() {
+      const cities = await fetch('/cities').then(r => r.json());
+      const models = await fetch('/models').then(r => r.json());
+      const citySelect = document.getElementById('city');
+      const modelSelect = document.getElementById('model');
+      cities.cities.forEach(city => citySelect.insertAdjacentHTML('beforeend', `<option>${city}</option>`));
+      models.models.forEach(model => {
+        const label = modelLabels[model] || model;
+        modelSelect.insertAdjacentHTML('beforeend', `<option value="${model}">${label}</option>`);
+      });
+      updateExplanation();
+    }
+
+    function updateExplanation() {
+      document.getElementById('explanation').innerHTML = `
+        <div style="background:#fcffed;border:1px solid #e5f4c8;padding:14px;border-radius:14px;margin-top:18px;">
+          <strong>Что выбираем:</strong>
+          <p><strong>Табличная модель</strong> — прогноз на основе признаков (лаги, средние значения, день недели, месяц).</p>
+          <p><strong>Статистическая модель</strong> — прогноз временного ряда с учётом тренда и сезонности.</p>
+          <p><strong>Горизонт прогноза</strong> — число дней вперёд, которое мы хотим предсказать.</p>
+        </div>
+      `;
+    }
+
+    async function drawChart(history, forecast, actual) {
+      const traceHistory = { x: history.map(r => r.date), y: history.map(r => r.temp_max), name: 'История', mode: 'lines+markers' };
+      const traceForecast = { x: forecast.map((_, i) => history.slice(-forecast.length)[i].date), y: forecast, name: 'Прогноз', mode: 'lines+markers' };
+      const traceActual = { x: actual.map((r) => r.date), y: actual.map((r) => r.temp_max), name: 'Факт', mode: 'lines+markers' };
+      Plotly.newPlot('chart', [traceHistory, traceForecast, traceActual], { margin: { t: 30 } });
+    }
+
+    function updateMetrics(metrics) {
+      document.getElementById('metrics').innerHTML = `
+        <h3>Метрики</h3>
+        <p>MAE: ${metrics.mae.toFixed(2)}</p>
+        <p>RMSE: ${metrics.rmse.toFixed(2)}</p>
+      `;
+    }
+
+    document.getElementById('predict').addEventListener('click', async () => {
+      const city = document.getElementById('city').value;
+      const model = document.getElementById('model').value;
+      const horizon = Number(document.getElementById('horizon').value);
+      const forecastResponse = await fetch('/forecast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city, model, horizon }),
+      }).then(r => r.json());
+
+      const historyResponse = await fetch(`/data?city=${city}`);
+      const history = await historyResponse.json();
+      await drawChart(history.data.slice(-30), forecastResponse.forecast, forecastResponse.actual.map((value, idx) => ({ date: history.data.slice(-forecastResponse.forecast.length)[idx].date, temp_max: value })));
+      updateMetrics(forecastResponse.metrics);
+    });
+
+    document.getElementById('refresh').addEventListener('click', async () => {
+      const city = document.getElementById('city').value;
+      await fetch(`/refresh?city=${city}`, { method: 'POST' });
+      alert('Исторические данные обновлены.');
+    });
+
+    loadOptions();
+  </script>
+</body>
+</html>

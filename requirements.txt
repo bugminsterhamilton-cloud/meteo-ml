@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+requests
+pandas
+scikit-learn
+statsmodels
+joblib
+plotly
+python-dateutil
+tensorflow>=2.14.0
