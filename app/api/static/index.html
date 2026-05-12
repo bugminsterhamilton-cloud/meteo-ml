@@ -3,117 +3,290 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Meteo ML Forecast</title>
+  <title>Прогноз погоды — Meteo ML</title>
   <script src="https://cdn.plot.ly/plotly-2.33.0.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 24px;
-      font-size: 18px;
-      color: #1f3d2f;
-      background: #f5f8f3;
+    :root {
+      --bg: #eef6f0;
+      --card: #ffffff;
+      --accent: #2f855a;
+      --accent-soft: #c6f6d5;
+      --text: #233d31;
+      --muted: #546b61;
+      --border: #dbe8df;
     }
 
-    h1 {
-      font-size: 2.1rem;
-      margin-bottom: 18px;
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', Arial, sans-serif;
+      background: radial-gradient(circle at top left, #f7fff7 0%, var(--bg) 40%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+    }
+
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(45, 85, 61, 0.08);
+      flex: 1 1 520px;
+    }
+
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 3vw, 3rem);
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .hero small {
+      display: inline-block;
+      margin-top: 14px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .intro-list {
+      margin-top: 18px;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .intro-list li {
+      margin-bottom: 10px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 22px;
+      min-width: 280px;
+      flex: 0 1 320px;
+      box-shadow: 0 16px 40px rgba(45, 85, 61, 0.05);
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
     }
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(4, minmax(180px, 1fr));
-      gap: 14px;
-      align-items: end;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
     }
 
-    label {
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field label {
       font-weight: 700;
-      display: block;
-      margin-bottom: 6px;
+      color: var(--text);
     }
 
     select,
-    input[type="number"] {
+    input[type='number'] {
       width: 100%;
-      padding: 12px 10px;
-      border: 1px solid #b8ceb6;
-      border-radius: 10px;
-      background: #fff;
+      padding: 14px 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fbfff9;
       font-size: 1rem;
+      color: var(--text);
+      outline: none;
+      transition: box-shadow 0.2s ease;
+    }
+
+    select:focus,
+    input[type='number']:focus {
+      box-shadow: 0 0 0 4px rgba(198, 246, 213, 0.45);
     }
 
     .button-group {
-      display: flex;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
-      justify-content: space-between;
-      flex-wrap: wrap;
+      align-items: end;
     }
 
     button {
-      padding: 14px 18px;
+      padding: 16px 14px;
       border: none;
-      border-radius: 12px;
-      background: #d8f0c7;
-      color: #1f472d;
-      font-size: 1rem;
+      border-radius: 14px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.95rem;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.2s ease, transform 0.2s ease;
-      min-width: 140px;
+      transition: transform 0.2s ease, background 0.2s ease;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .button-icon {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .button-text {
+      text-align: center;
+      line-height: 1.2;
     }
 
     button:hover {
-      background: #c3e6a5;
+      background: #b9e6b2;
       transform: translateY(-1px);
     }
 
-    #chart {
-      height: 520px;
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 12px;
-      box-shadow: 0 10px 30px rgba(31, 77, 47, 0.08);
+    #chart-card,
+    #metrics,
+    #explanation {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 20px;
+      box-shadow: 0 16px 40px rgba(45, 85, 61, 0.05);
+      margin-bottom: 20px;
     }
 
-    #metrics {
-      margin-top: 20px;
-      background: #ffffff;
-      border-radius: 14px;
-      padding: 18px;
-      box-shadow: 0 8px 20px rgba(31, 77, 47, 0.06);
+    #chart {
+      height: 490px;
+      width: 100%;
+    }
+
+    #metrics h3 {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+    }
+
+    #metrics p {
+      margin: 8px 0;
+      color: var(--muted);
+    }
+
+    .note {
+      color: #4f6f58;
+      font-size: 0.95rem;
+      line-height: 1.75;
+    }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 12px;
     }
   </style>
 </head>
 <body>
-  <h1>Учебный сервис прогноза погоды</h1>
-  <div class="controls">
-    <div>
-      <label>Город</label><br />
-      <select id="city"></select>
-    </div>
-    <div>
-      <label>Тип модели</label><br />
-      <select id="model"></select>
-    </div>
-    <div>
-      <label>Горизонт прогноза (дней)</label><br />
-      <input id="horizon" type="number" min="1" max="7" value="3" />
-    </div>
-    <div class="button-group">
-      <button id="predict">Спрогнозировать</button>
-      <button id="refresh">Обновить данные</button>
-    </div>
+  <div class="page">
+    <header>
+      <section class="hero">
+        <h1>Прогноз погоды на основе ML 🌦️</h1>
+        <p>Проверяйте актуальные городские прогнозы, сравнивайте модели и смотрите метрики в понятном виде.</p>
+        <small>Все данные обновляются из Open-Meteo и показываются на русском языке.</small>
+        <ul class="intro-list">
+          <li>Выберите город: <strong>Москва</strong>, <strong>Берлин</strong>, <strong>Лондон</strong></li>
+          <li>Поменяйте модель и посмотрите, как меняются прогнозы</li>
+          <li>Горизонт прогнозирования: до 7 дней</li>
+        </ul>
+      </section>
+      <aside class="panel">
+        <h2>Управление</h2>
+        <div class="controls">
+          <div class="field">
+            <label for="city">Город</label>
+            <select id="city"></select>
+          </div>
+          <div class="field">
+            <label for="model">Модель</label>
+            <select id="model"></select>
+          </div>
+          <div class="field">
+            <label for="horizon">Горизонт (событий), дней</label>
+            <input id="horizon" type="number" min="1" max="7" value="3" />
+          </div>
+          <div class="button-group">
+            <button id="predict"><span class="button-icon">💡</span><span class="button-text">Сделать прогноз</span></button>
+            <button id="refresh"><span class="button-icon">🔄</span><span class="button-text">Обновить данные</span></button>
+          </div>
+        </div>
+      </aside>
+    </header>
+
+    <section id="chart-card">
+      <h2>График прогноза</h2>
+      <div id="chart"></div>
+    </section>
+
+    <section id="metrics">
+      <h3>Метрики модели</h3>
+      <p>Нажмите «Сделать прогноз», чтобы увидеть MAE и RMSE.</p>
+    </section>
+
+    <section id="explanation">
+      <h3>Пояснение</h3>
+      <p class="note">Выбирайте модель и город, чтобы сравнить результат. Прогноз строится по историческим данным и временным признакам.</p>
+    </section>
+
+    <div class="footer">
+  НЕ ВСЕ ПРАВА ЗАЩИЩЕНЫ!<br>
+  Использование на свой страх и риск.<br>
+  Для посетителя существует вероятность несанкционированных анальных ласк
+</div>
   </div>
-  <div id="chart" style="height: 520px;"></div>
-  <div id="metrics"></div>
-  <div id="explanation"></div>
 
   <script>
+    const cityLabels = {
+      Moscow: 'Москва',
+      Berlin: 'Берлин',
+      London: 'Лондон',
+    };
+
     const modelLabels = {
-      tabular: 'Табличная модель (лаговые признаки + деревья)',
-      stats: 'Статистическая модель (скользящее сглаживание)',
-      sequence: 'Последовательная модель (LSTM, если доступно)'
+      tabular: 'Табличная модель',
+      stats: 'Статистическая модель',
+      sequence: 'Последовательная модель',
+    };
+
+    const modelDescriptions = {
+      tabular: 'Прогноз на основе лаговых признаков, средних значений и временных характеристик.',
+      stats: 'Простая статистическая модель с учётом тренда и сезонности.',
+      sequence: 'Последовательная модель для временных рядов (если включена).',
     };
 
     async function loadOptions() {
@@ -121,60 +294,95 @@
       const models = await fetch('/models').then(r => r.json());
       const citySelect = document.getElementById('city');
       const modelSelect = document.getElementById('model');
-      cities.cities.forEach(city => citySelect.insertAdjacentHTML('beforeend', `<option>${city}</option>`));
+
+      cities.cities.forEach(city => {
+        const label = cityLabels[city] || city;
+        citySelect.insertAdjacentHTML('beforeend', `<option value="${city}">${label}</option>`);
+      });
+
       models.models.forEach(model => {
         const label = modelLabels[model] || model;
         modelSelect.insertAdjacentHTML('beforeend', `<option value="${model}">${label}</option>`);
       });
+
       updateExplanation();
     }
 
-    function updateExplanation() {
+    function updateExplanation(model = 'tabular') {
       document.getElementById('explanation').innerHTML = `
-        <div style="background:#fcffed;border:1px solid #e5f4c8;padding:14px;border-radius:14px;margin-top:18px;">
-          <strong>Что выбираем:</strong>
-          <p><strong>Табличная модель</strong> — прогноз на основе признаков (лаги, средние значения, день недели, месяц).</p>
-          <p><strong>Статистическая модель</strong> — прогноз временного ряда с учётом тренда и сезонности.</p>
-          <p><strong>Горизонт прогноза</strong> — число дней вперёд, которое мы хотим предсказать.</p>
-        </div>
+        <h3>Как работает</h3>
+        <p class="note">${modelDescriptions[model] || 'Выберите модель, чтобы увидеть её описание.'}</p>
       `;
     }
 
     async function drawChart(history, forecast, actual) {
-      const traceHistory = { x: history.map(r => r.date), y: history.map(r => r.temp_max), name: 'История', mode: 'lines+markers' };
-      const traceForecast = { x: forecast.map((_, i) => history.slice(-forecast.length)[i].date), y: forecast, name: 'Прогноз', mode: 'lines+markers' };
-      const traceActual = { x: actual.map((r) => r.date), y: actual.map((r) => r.temp_max), name: 'Факт', mode: 'lines+markers' };
-      Plotly.newPlot('chart', [traceHistory, traceForecast, traceActual], { margin: { t: 30 } });
+      const historyTrace = {
+        x: history.map(r => r.date),
+        y: history.map(r => r.temp_max),
+        name: 'Исторические значения',
+        mode: 'lines+markers',
+        line: { color: '#2f855a' },
+      };
+
+      const forecastTrace = {
+        x: history.slice(-forecast.length).map(r => r.date),
+        y: forecast,
+        name: 'Прогноз',
+        mode: 'lines+markers',
+        line: { dash: 'dash', color: '#dd6b20' },
+      };
+
+      const actualTrace = {
+        x: actual.map(r => r.date),
+        y: actual.map(r => r.temp_max),
+        name: 'Фактические значения',
+        mode: 'lines+markers',
+        line: { color: '#3182ce' },
+      };
+
+      Plotly.newPlot('chart', [historyTrace, forecastTrace, actualTrace], {
+        margin: { t: 40, l: 60, r: 30, b: 40 },
+        legend: { orientation: 'h', y: -0.2 },
+        modebar: { remove: ['sendDataToCloud', 'zoomIn2d', 'zoomOut2d'] },
+      });
     }
 
     function updateMetrics(metrics) {
       document.getElementById('metrics').innerHTML = `
-        <h3>Метрики</h3>
-        <p>MAE: ${metrics.mae.toFixed(2)}</p>
-        <p>RMSE: ${metrics.rmse.toFixed(2)}</p>
+        <h3>Метрики модели</h3>
+        <p><strong>MAE:</strong> ${metrics.mae.toFixed(2)}</p>
+        <p><strong>RMSE:</strong> ${metrics.rmse.toFixed(2)}</p>
       `;
     }
+
+    document.getElementById('model').addEventListener('change', event => {
+      updateExplanation(event.target.value);
+    });
 
     document.getElementById('predict').addEventListener('click', async () => {
       const city = document.getElementById('city').value;
       const model = document.getElementById('model').value;
       const horizon = Number(document.getElementById('horizon').value);
-      const forecastResponse = await fetch('/forecast', {
+
+      const response = await fetch('/forecast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ city, model, horizon }),
-      }).then(r => r.json());
+      });
+      const forecastResult = await response.json();
 
       const historyResponse = await fetch(`/data?city=${city}`);
       const history = await historyResponse.json();
-      await drawChart(history.data.slice(-30), forecastResponse.forecast, forecastResponse.actual.map((value, idx) => ({ date: history.data.slice(-forecastResponse.forecast.length)[idx].date, temp_max: value })));
-      updateMetrics(forecastResponse.metrics);
+
+      const slice = history.data.slice(-Math.max(30, horizon));
+      await drawChart(slice, forecastResult.forecast, slice.slice(-forecastResult.forecast.length));
+      updateMetrics(forecastResult.metrics);
     });
 
     document.getElementById('refresh').addEventListener('click', async () => {
       const city = document.getElementById('city').value;
       await fetch(`/refresh?city=${city}`, { method: 'POST' });
-      alert('Исторические данные обновлены.');
+      alert('Данные для выбранного города обновлены ✅');
     });
 
     loadOptions();
