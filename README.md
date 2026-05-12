@@ -19,6 +19,7 @@ python -m pip install -r requirements.txt
 ```
 
 2. Запустите сервер:
+# python main.py --reload
 
 ```bash
 uvicorn app.api.app:app --reload
